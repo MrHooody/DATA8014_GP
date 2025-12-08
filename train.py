@@ -18,6 +18,7 @@ from util.faster_mix_k_means_pytorch import K_Means as SemiSupKMeans
 from config import exp_root, crate_alpha_pretrain_path, ovr_envs, distortions, severity
 from loss import DINOHead, info_nce_logits, SupConLoss, DistillLoss, ContrastiveLearningViewGenerator, get_params_groups, Distangleloss
 from models.crate_alpha import CRATE_base as crate
+from transformers import ViTModel
 
 def one_axis_loss(axis, header, feats, masked_sup_labels, mask_lab, cluster_criterion, epoch):
     student_proj, student_out = header(feats)
@@ -77,10 +78,16 @@ def train(student, dom_head, con_mlp, train_loader, optimizer, lr_scheduler, clu
         dom_labels = torch.zeros_like(class_labels[mask_lab]).to(class_labels.device)
 
         with torch.cuda.amp.autocast(fp16_scaler is not None):
-            feat_list = student[0].forward_features(images, [1, 12])
-            domain_feats = feat_list[0]
-            semantic_feats = feat_list[-1]
-            del feat_list
+            if args.model == 'crate':
+                feat_list = student[0].forward_features(images, [1, 12])
+                domain_feats = feat_list[0]
+                semantic_feats = feat_list[-1]
+                del feat_list
+            elif args.model == 'vit':
+                feat_list = student[0](images, output_hidden_states=True).hidden_states
+                semantic_feats = feat_list[-1][:, 0, :]
+                domain_feats = feat_list[1][:, 0, :]
+                del feat_list
 
             sem_loss, sem_proj, sem_out = one_axis_loss('sem', model[1], semantic_feats,
                                                 class_labels[mask_lab], mask_lab, cluster_criterion, epoch)
@@ -172,7 +179,7 @@ if __name__ == "__main__":
     parser.add_argument('--print_freq', default=100, type=int)
     parser.add_argument('--exp_name', default=None, type=str)
 
-    parser.add_argument('--model', default='crate', type=str, help='crate|vit')
+    parser.add_argument('--model', default='crate', type=str, help='crate|vit|dino')
     parser.add_argument('--mi_weight', default=0.5)
 
     # ----------------------
@@ -195,10 +202,6 @@ if __name__ == "__main__":
     # ----------------------
     args.interpolation = 3
     args.crop_pct = 0.875
-
-    backbone = crate()
-    state_dict = torch.load(crate_alpha_pretrain_path, map_location='cpu')
-    backbone.load_state_dict(state_dict, strict=False)
     
     # NOTE: Hardcoded image size as we do not finetune the entire ViT model
     args.image_size = 224
@@ -209,15 +212,33 @@ if __name__ == "__main__":
     # ----------------------
     # HOW MUCH OF BASE MODEL TO FINETUNE
     # ----------------------
-    for m in backbone.parameters():
-        m.requires_grad = False
+    if args.model == 'crate':
+        backbone = crate()
+        state_dict = torch.load(crate_alpha_pretrain_path, map_location='cpu')
+        backbone.load_state_dict(state_dict, strict=False)
 
-    # Only finetune layers from block 'args.grad_from_block' onwards
-    for name, m in backbone.named_parameters():
-        if 'layers' in name:
-            block_num = int(name.split('.')[2])
-            if block_num >= args.grad_from_block:
-                m.requires_grad = True
+        for m in backbone.parameters():
+            m.requires_grad = False
+
+        # Only finetune layers from block 'args.grad_from_block' onwards
+        for name, m in backbone.named_parameters():
+            if 'layers' in name:
+                block_num = int(name.split('.')[2])
+                if block_num >= args.grad_from_block:
+                    m.requires_grad = True
+    
+    elif args.model == 'vit':
+        backbone = ViTModel.from_pretrained("google/vit-base-patch16-224")
+
+        for m in backbone.parameters():
+            m.requires_grad = False
+
+        # Only finetune layers from block 'args.grad_from_block' onwards
+        for name, m in backbone.named_parameters():
+            if 'encoder.layer' in name:
+                block_num = int(name.split('.')[2])
+                if block_num >= args.grad_from_block:
+                    m.requires_grad = True
 
     # Double check
     enabled = set()
