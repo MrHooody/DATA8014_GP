@@ -98,7 +98,7 @@ def train(student, dom_head, con_mlp, train_loader, optimizer, lr_scheduler, clu
             # mutual information disentanglement
             mi_loss = mi_criterion(con_mlp, sem_proj, dom_proj)
 
-            loss = args.mi_weight * mi_loss + sem_loss + dom_loss
+            loss = sem_loss + dom_loss + args.mi_weight * mi_loss
 
             
         # Train acc
@@ -125,7 +125,10 @@ def test(model, test_loader, epoch, save_name, args):
     for batch_idx, (images, label, _) in enumerate(tqdm(test_loader)):
         images = images.cuda(non_blocking=True)
         with torch.no_grad():
-            _, logits = model(images)
+            if args.model == 'crate':
+                _, logits = model(images)
+            elif args.model == 'vit':
+                _, logits = model[1](model[0](images).pooler_output)
             preds.append(logits.argmax(1).cpu().numpy())
             targets.append(label.cpu().numpy())
             mask = np.append(mask, np.array([True if x.item() in range(len(args.train_classes)) else False for x in label]))
@@ -175,7 +178,7 @@ if __name__ == "__main__":
     parser.add_argument('--teacher_temp', default=0.04, type=float, help='Final value (after linear warmup)of the teacher temperature.')
     parser.add_argument('--warmup_teacher_temp_epochs', default=30, type=int, help='Number of warmup epochs for the teacher temperature.')
 
-    parser.add_argument('--fp16', action='store_true', default=True)
+    parser.add_argument('--fp16', action='store_true', default=False)
     parser.add_argument('--print_freq', default=100, type=int)
     parser.add_argument('--exp_name', default=None, type=str)
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-PYTHON="/home/hpo/anaconda3/envs/hilo/bin/python3"
+PYTHON="/home/hpo/anaconda3/envs/data8014/bin/python3"
 export CUDA_VISIBLE_DEVICES=${1}
 
 DATASETS=("cubc")
