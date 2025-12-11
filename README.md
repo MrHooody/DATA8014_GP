@@ -37,10 +37,15 @@ SSB-C: [HKU Data Repository](https://datahub.hku.hk/articles/dataset/Semantic_Sh
 
 ### Checkpoints
 
-Finetuned on DomainNet real-painting: [real-painting](https://drive.google.com/file/d/1g6DQLMZ36icqrad9XfCrYlt_lyKMb0hj/view?usp=sharing)
+Finetuned on DomainNet real-painting w/o MI: [real-painting](https://drive.google.com/file/d/1w_X09AMZPGuqmYGmF7mkLQ_TmdclHBsh/view?usp=sharing)
 
 
-Fintuned on CUB-C: [cubc](https://drive.google.com/file/d/12yN2x37elpyG7h31y_NtVqU8Bb1skNdy/view?usp=sharing)
+Finetuned on DomainNet real-painting w/ MI: [real-painting-MI](https://drive.google.com/file/d/1g6DQLMZ36icqrad9XfCrYlt_lyKMb0hj/view?usp=sharing)
+
+
+Finetuned on CUB-C w/o MI: [cubc](https://drive.google.com/file/d/1mmVktle9-hWGI_FEJwrLFKrWM521lcBi/view?usp=sharing)
+
+Fintuned on CUB-C w/ MI: [cubc-MI](https://drive.google.com/file/d/12yN2x37elpyG7h31y_NtVqU8Bb1skNdy/view?usp=sharing)
 
 ### Configuration
 
